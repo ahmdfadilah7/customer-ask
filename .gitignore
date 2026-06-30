@@ -16,6 +16,7 @@ Thumbs.db
 # Dependencies
 backend/vendor/
 frontend/node_modules/
+sample-import/
 
 # Build
 frontend/dist/
