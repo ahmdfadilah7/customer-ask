@@ -19,6 +19,7 @@ const props = defineProps({
 
 const emit = defineEmits(['selection-change'])
 
+const tableRef = ref(null)
 const search = ref('')
 const currentPage = ref(1)
 const pageSize = ref(props.pageSize)
@@ -86,6 +87,12 @@ function handleSortChange({ prop, order }) {
 function handleSelectionChange(rows) {
   emit('selection-change', rows)
 }
+
+function clearSelection() {
+  tableRef.value?.clearSelection()
+}
+
+defineExpose({ clearSelection })
 </script>
 
 <template>
@@ -115,6 +122,7 @@ function handleSelectionChange(rows) {
     </div>
 
     <el-table
+      ref="tableRef"
       v-loading="loading"
       :data="paginatedData"
       :row-key="rowKey"

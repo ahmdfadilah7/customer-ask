@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CorporateImportController;
 use App\Http\Controllers\Api\CustomerContactController;
+use App\Http\Controllers\Api\CustomerPricingRuleController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EmployeeImportController;
@@ -101,10 +102,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:corporate-view')->group(function () {
         Route::get('/corporate-import/reference', [CorporateImportController::class, 'reference']);
         Route::get('/corporate-import/template', [CorporateImportController::class, 'template']);
+        Route::get('/pricing-reference', [CustomerPricingRuleController::class, 'reference']);
         Route::get('/customers', [CustomerController::class, 'index']);
         Route::get('/customers/trashed/list', [CustomerController::class, 'trashed']);
         Route::get('/customers/{customer}', [CustomerController::class, 'show']);
         Route::get('/customers/{customer}/contacts', [CustomerContactController::class, 'index']);
+    });
+
+    Route::post('/customers', [CustomerController::class, 'store'])->middleware('permission:corporate-create');
+    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:corporate-update');
+
+    Route::middleware('permission:corporate-update')->group(function () {
+        Route::post('/customers/{customer}/pricing-rules', [CustomerPricingRuleController::class, 'store']);
+        Route::put('/customers/{customer}/pricing-rules/{pricingRule}', [CustomerPricingRuleController::class, 'update']);
+        Route::delete('/customers/{customer}/pricing-rules/{pricingRule}', [CustomerPricingRuleController::class, 'destroy']);
     });
 
     Route::middleware('permission:pegawai-view')->group(function () {

@@ -17,16 +17,31 @@ import {
 } from '@lucide/vue'
 import { deleteCustomer, fetchCustomer } from '@/api/customers'
 import {
+  createPricingRule,
+  deletePricingRule,
+  fetchPricingReference,
+  updatePricingRule,
+} from '@/api/customerPricing'
+import {
   createCustomerContact,
   deleteCustomerContact,
   updateCustomerContact,
 } from '@/api/customerContacts'
+import {
+  createEmployee,
+  fetchEmployee,
+  updateEmployee,
+} from '@/api/employees'
+import { fetchNationalities } from '@/api/nationalities'
+import { fetchTitles } from '@/api/titles'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import DetailHero from '@/components/ui/DetailHero.vue'
 import AppModal from '@/components/ui/AppModal.vue'
+import PricingRuleFormModal from '@/components/corporate/PricingRuleFormModal.vue'
+import EmployeeFormModal from '@/components/employees/EmployeeFormModal.vue'
 import { TERMS } from '@/constants/terminology'
 import { getApiErrorMessage } from '@/utils/apiError'
 
@@ -42,15 +57,33 @@ const activeTab = ref('profile')
 const showPicModal = ref(false)
 const savingPic = ref(false)
 const editingPic = ref(null)
+const showPricingModal = ref(false)
+const savingPricing = ref(false)
+const editingPricingRule = ref(null)
+const pricingReference = ref(null)
+const showEmployeeModal = ref(false)
+const savingEmployee = ref(false)
+const editingEmployee = ref(null)
+const titles = ref([])
+const nationalities = ref([])
 
 const emptyPicForm = () => ({ employee_id: '', name: '', phone: '', email: '', is_primary: false })
 const picForm = ref(emptyPicForm())
 const picSource = ref('manual')
 
 const canManage = computed(() => auth.canManage('corporate'))
+const canUpdateCorporate = computed(() => auth.hasPermission('corporate-update'))
+const canManageEmployee = computed(() => auth.canManage('pegawai'))
 const canImportCorporate = computed(() => auth.canImport('corporate'))
 const canImportService = computed(() => auth.canImport('service'))
 const canImportPegawai = computed(() => auth.canImport('pegawai'))
+const existingPricingRules = computed(() => {
+  if (!customer.value?.pricing) return []
+  return [
+    ...(customer.value.pricing.airlines ?? []),
+    ...(customer.value.pricing.services ?? []),
+  ]
+})
 const canManagePic = computed(() => canManage.value)
 
 const tabs = [
@@ -122,7 +155,23 @@ const primaryPic = computed(() =>
   customer.value?.contacts?.find((c) => c.is_primary) ?? null,
 )
 
-onMounted(loadDetail)
+const customerOptions = computed(() => (customer.value ? [customer.value] : []))
+
+onMounted(async () => {
+  await loadDetail()
+  if (canUpdateCorporate.value) {
+    loadPricingReference()
+  }
+})
+
+async function loadPricingReference() {
+  try {
+    const { data } = await fetchPricingReference()
+    pricingReference.value = data
+  } catch {
+    pricingReference.value = null
+  }
+}
 
 async function loadDetail() {
   loading.value = true
@@ -297,6 +346,130 @@ async function handleDeletePic(contact) {
     toast.error(getApiErrorMessage(err, 'Gagal menghapus PIC.'))
   }
 }
+
+function openEditCorporate() {
+  if (!customer.value) return
+  router.push({ name: 'corporate-edit', params: { id: customer.value.id } })
+}
+
+function openCreatePricingRule() {
+  editingPricingRule.value = null
+  showPricingModal.value = true
+}
+
+function openEditPricingRule(rule) {
+  editingPricingRule.value = rule
+  showPricingModal.value = true
+}
+
+async function handlePricingSubmit(payload) {
+  if (!customer.value) return
+  const items = payload.items ?? [payload]
+  if (!items.length) return
+
+  savingPricing.value = true
+  try {
+    let created = 0
+    let updated = 0
+
+    for (const item of items) {
+      const ruleId = editingPricingRule.value?.id ?? item.existing_rule_id
+      const apiPayload = {
+        service_category_id: item.service_category_id,
+        region_scope_id: item.region_scope_id,
+        airline_id: item.airline_id,
+        raw_value: item.raw_value,
+      }
+
+      if (ruleId) {
+        await updatePricingRule(customer.value.id, ruleId, apiPayload)
+        updated += 1
+      } else {
+        await createPricingRule(customer.value.id, apiPayload)
+        created += 1
+      }
+    }
+
+    if (items.length === 1) {
+      toast.success(updated ? 'Service fee berhasil diperbarui.' : 'Service fee berhasil ditambahkan.')
+    } else {
+      toast.success(`${items.length} tarif service fee berhasil disimpan (${created} baru, ${updated} diperbarui).`)
+    }
+
+    showPricingModal.value = false
+    await loadDetail()
+  } catch (err) {
+    toast.error(getApiErrorMessage(err, 'Gagal menyimpan service fee.'))
+  } finally {
+    savingPricing.value = false
+  }
+}
+
+async function handleDeletePricingRule(rule) {
+  if (!customer.value) return
+  const confirmed = await confirm.confirm({
+    title: 'Hapus Service Fee',
+    message: `Hapus tarif "${rule.label || rule.raw_value}"?`,
+    confirmLabel: 'Ya, Hapus',
+    variant: 'danger',
+  })
+  if (!confirmed) return
+
+  try {
+    await deletePricingRule(customer.value.id, rule.id)
+    toast.success('Service fee berhasil dihapus.')
+    await loadDetail()
+  } catch (err) {
+    toast.error(getApiErrorMessage(err, 'Gagal menghapus service fee.'))
+  }
+}
+
+async function ensureEmployeeFormOptions() {
+  if (!titles.value.length) {
+    const { data } = await fetchTitles()
+    titles.value = data.data ?? []
+  }
+  if (!nationalities.value.length) {
+    const { data } = await fetchNationalities()
+    nationalities.value = data.data ?? []
+  }
+}
+
+async function openAddEmployee() {
+  await ensureEmployeeFormOptions()
+  editingEmployee.value = null
+  showEmployeeModal.value = true
+}
+
+async function openEditEmployee(employee) {
+  await ensureEmployeeFormOptions()
+  try {
+    const { data } = await fetchEmployee(employee.id)
+    editingEmployee.value = data.data
+    showEmployeeModal.value = true
+  } catch (err) {
+    toast.error(getApiErrorMessage(err, 'Gagal memuat data pegawai.'))
+  }
+}
+
+async function handleEmployeeSubmit(payload) {
+  savingEmployee.value = true
+  try {
+    if (editingEmployee.value) {
+      await updateEmployee(editingEmployee.value.id, payload)
+      toast.success('Pegawai berhasil diperbarui.')
+    } else {
+      await createEmployee(payload)
+      toast.success('Pegawai berhasil ditambahkan.')
+    }
+    showEmployeeModal.value = false
+    await loadDetail()
+  } catch (err) {
+    toast.error(getApiErrorMessage(err, 'Gagal menyimpan pegawai.'))
+  } finally {
+    savingEmployee.value = false
+  }
+}
 </script>
 
 <template>
@@ -325,6 +498,15 @@ async function handleDeletePic(contact) {
         >
           <Users class="size-4" />
           {{ TERMS.employee.label }}
+        </button>
+        <button
+          v-if="canUpdateCorporate && customer"
+          type="button"
+          class="btn-secondary !py-2"
+          @click="openEditCorporate"
+        >
+          <Pencil class="size-4" />
+          Edit Corporate
         </button>
         <router-link v-if="canImportService" to="/import/service" class="btn-secondary !py-2">
           <FileUp class="size-4" />
@@ -387,7 +569,11 @@ async function handleDeletePic(contact) {
           <div v-show="activeTab === 'profile'" class="space-y-6">
             <p class="text-sm text-slate-500">
               Profil dan pengaturan {{ TERMS.corporate.singular.toLowerCase() }} pelanggan.
-              <template v-if="canImportCorporate">
+              <template v-if="canUpdateCorporate">
+                Klik <button type="button" class="font-medium text-brand-600 hover:underline" @click="openEditCorporate">Edit Corporate</button>
+                untuk mengubah data.
+              </template>
+              <template v-else-if="canImportCorporate">
                 Data diimport lewat
                 <router-link to="/import/corporate" class="font-medium text-brand-600 hover:underline">Import Corporate</router-link>.
               </template>
@@ -482,22 +668,34 @@ async function handleDeletePic(contact) {
           <div v-show="activeTab === 'employees'" class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <p class="text-sm text-slate-500">
-                Ringkasan {{ TERMS.employee.plural.toLowerCase() }} corporate ini. Kelola lengkap di menu Pegawai.
+                {{ TERMS.employee.plural }} corporate ini.
               </p>
-              <button type="button" class="btn-secondary !py-2 text-sm" @click="openPegawaiList">
-                <Users class="size-4" />
-                Buka Menu Pegawai
-              </button>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-if="canManageEmployee"
+                  type="button"
+                  class="btn-primary !py-2 text-sm"
+                  @click="openAddEmployee"
+                >
+                  <Plus class="size-4" />
+                  Tambah Pegawai
+                </button>
+                <button type="button" class="btn-secondary !py-2 text-sm" @click="openPegawaiList">
+                  <Users class="size-4" />
+                  Buka Menu Pegawai
+                </button>
+              </div>
             </div>
 
             <div v-if="customer.employees?.length" class="table-shell overflow-x-auto">
-              <table class="data-table min-w-[520px]">
+              <table class="data-table min-w-[600px]">
                 <thead>
                   <tr>
                     <th>Nama</th>
                     <th>Mobile</th>
                     <th>Email</th>
                     <th>Status</th>
+                    <th v-if="canManageEmployee" class="text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -518,13 +716,27 @@ async function handleDeletePic(contact) {
                         {{ employee.status === 'active' ? 'Aktif' : 'Nonaktif' }}
                       </span>
                     </td>
+                    <td v-if="canManageEmployee" class="text-right">
+                      <button
+                        type="button"
+                        class="btn-icon-neutral"
+                        title="Edit pegawai"
+                        @click="openEditEmployee(employee)"
+                      >
+                        <Pencil class="size-4" />
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p v-else class="empty-state">
               Belum ada pegawai.
-              <template v-if="canImportPegawai">
+              <template v-if="canManageEmployee">
+                <button type="button" class="text-brand-600 hover:underline" @click="openAddEmployee">Tambah pegawai</button>
+                atau
+              </template>
+              <template v-else-if="canImportPegawai">
                 <router-link to="/import/employee" class="text-brand-600 hover:underline">Import pegawai</router-link>
                 atau
               </template>
@@ -536,24 +748,36 @@ async function handleDeletePic(contact) {
           <div v-show="activeTab === 'service-fee'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <p class="text-sm text-slate-500">
-                Tarif service fee dari import Data Service
+                Tarif service fee
                 <span v-if="customer.active_pricing_version" class="font-medium text-slate-700">
                   — versi {{ customer.active_pricing_version.name }}
                 </span>.
               </p>
-              <router-link
-                v-if="canImportService"
-                to="/import/service"
-                class="btn-secondary !py-2 text-sm"
-              >
-                <FileUp class="size-4" />
-                Import Service
-              </router-link>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-if="canUpdateCorporate"
+                  type="button"
+                  class="btn-primary !py-2 text-sm"
+                  @click="openCreatePricingRule"
+                >
+                  <Plus class="size-4" />
+                  Tambah Tarif
+                </button>
+                <router-link
+                  v-if="canImportService"
+                  to="/import/service"
+                  class="btn-secondary !py-2 text-sm"
+                >
+                  <FileUp class="size-4" />
+                  Import Service
+                </router-link>
+              </div>
             </div>
 
             <p v-if="!customer.active_pricing_version" class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-100">
               Belum ada versi service fee aktif.
-              <template v-if="canImportService"> Import lewat menu Import → Data Service.</template>
+              <template v-if="canUpdateCorporate"> Tambah tarif manual atau import lewat menu Import → Data Service.</template>
+              <template v-else-if="canImportService"> Import lewat menu Import → Data Service.</template>
             </p>
 
             <div class="rounded-2xl border border-slate-100 bg-slate-50/30 p-5">
@@ -569,6 +793,7 @@ async function handleDeletePic(contact) {
                       <th>Kode</th>
                       <th>Scope</th>
                       <th>Nilai</th>
+                      <th v-if="canUpdateCorporate" class="text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -576,6 +801,16 @@ async function handleDeletePic(contact) {
                       <td class="font-mono font-medium text-slate-800">{{ row.airline_code ?? '—' }}</td>
                       <td>{{ row.region_scope ?? '—' }}</td>
                       <td class="whitespace-pre-wrap text-sm">{{ row.raw_value }}</td>
+                      <td v-if="canUpdateCorporate" class="text-right">
+                        <div class="flex justify-end gap-1">
+                          <button type="button" class="btn-icon-neutral" @click="openEditPricingRule(row)">
+                            <Pencil class="size-4" />
+                          </button>
+                          <button type="button" class="btn-icon-danger" @click="handleDeletePricingRule(row)">
+                            <Trash2 class="size-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -596,6 +831,7 @@ async function handleDeletePic(contact) {
                       <th>Layanan</th>
                       <th>Scope</th>
                       <th>Nilai</th>
+                      <th v-if="canUpdateCorporate" class="text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -603,6 +839,16 @@ async function handleDeletePic(contact) {
                       <td class="font-medium text-slate-800">{{ row.label }}</td>
                       <td>{{ row.region_scope ?? '—' }}</td>
                       <td class="whitespace-pre-wrap text-sm">{{ row.raw_value }}</td>
+                      <td v-if="canUpdateCorporate" class="text-right">
+                        <div class="flex justify-end gap-1">
+                          <button type="button" class="btn-icon-neutral" @click="openEditPricingRule(row)">
+                            <Pencil class="size-4" />
+                          </button>
+                          <button type="button" class="btn-icon-danger" @click="handleDeletePricingRule(row)">
+                            <Trash2 class="size-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -673,5 +919,26 @@ async function handleDeletePic(contact) {
         </div>
       </form>
     </AppModal>
+
+    <PricingRuleFormModal
+      v-model="showPricingModal"
+      :reference="pricingReference"
+      :rule="editingPricingRule"
+      :existing-rules="existingPricingRules"
+      :saving="savingPricing"
+      @submit="handlePricingSubmit"
+    />
+
+    <EmployeeFormModal
+      v-model="showEmployeeModal"
+      :customers="customerOptions"
+      :titles="titles"
+      :nationalities="nationalities"
+      :employee="editingEmployee"
+      :default-customer-id="customer?.id"
+      lock-customer
+      :saving="savingEmployee"
+      @submit="handleEmployeeSubmit"
+    />
   </div>
 </template>

@@ -7,6 +7,7 @@ use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use App\Models\CustomerPricingRule;
 use App\Models\PricingVersion;
+use App\Services\CustomerProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -115,6 +116,32 @@ class CustomerController extends Controller
         $customer->pricing_groups = $this->groupPricingRules($customer, $version?->id);
 
         return new CustomerResource($customer);
+    }
+
+    public function store(Request $request, CustomerProfileService $profileService): CustomerResource
+    {
+        $data = $this->validatedProfileData($request, creating: true);
+        $user = $request->user();
+
+        if ($user && ! $user->hasFullBranchAccess() && ! in_array($data['branch_id'], $user->allowedBranchIds(), true)) {
+            abort(403, 'Anda tidak memiliki akses ke cabang ini.');
+        }
+
+        $customer = $profileService->create($data, $user);
+
+        return (new CustomerResource($customer))
+            ->additional(['message' => 'Corporate berhasil ditambahkan.']);
+    }
+
+    public function update(Request $request, Customer $customer, CustomerProfileService $profileService): CustomerResource
+    {
+        $this->authorizeCustomerAccess($request, $customer);
+
+        $data = $this->validatedProfileData($request, creating: false);
+        $customer = $profileService->update($customer, $data, $request->user());
+
+        return (new CustomerResource($customer))
+            ->additional(['message' => 'Corporate berhasil diperbarui.']);
     }
 
     public function destroy(Request $request, Customer $customer): JsonResponse
@@ -331,6 +358,9 @@ class CustomerController extends Controller
 
             $item = [
                 'id' => $rule->id,
+                'service_category_id' => $rule->service_category_id,
+                'region_scope_id' => $rule->region_scope_id,
+                'airline_id' => $rule->airline_id,
                 'label' => $this->pricingLabel($rule),
                 'service_category' => $categoryCode,
                 'region_scope' => $rule->regionScope?->code,
@@ -357,5 +387,24 @@ class CustomerController extends Controller
         ]);
 
         return implode(' · ', $parts);
+    }
+
+    /** @return array<string, mixed> */
+    private function validatedProfileData(Request $request, bool $creating): array
+    {
+        return $request->validate([
+            'branch_id' => [$creating ? 'required' : 'prohibited', 'exists:branches,id'],
+            'name' => [$creating ? 'required' : 'sometimes', 'string', 'max:255'],
+            'corp_mode' => ['nullable', 'boolean'],
+            'faktur_pajak' => ['nullable', 'boolean'],
+            'show_service_fee' => ['nullable', 'boolean'],
+            'invoice_method' => ['nullable', 'in:print,email,print_email,no'],
+            'cn_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'contract_period' => ['nullable', 'string', 'max:500'],
+            'general_note' => ['nullable', 'string'],
+            'aliases' => ['nullable', 'array'],
+            'aliases.*' => ['string', 'max:255'],
+            'materai' => ['nullable', 'string', 'max:255'],
+        ]);
     }
 }

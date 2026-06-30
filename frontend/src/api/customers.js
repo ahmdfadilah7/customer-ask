@@ -12,6 +12,14 @@ export function fetchCustomer(id) {
   return apiClient.get(`/api/customers/${id}`)
 }
 
+export function createCustomer(payload) {
+  return apiClient.post('/api/customers', payload)
+}
+
+export function updateCustomer(id, payload) {
+  return apiClient.put(`/api/customers/${id}`, payload)
+}
+
 export function deleteCustomer(id) {
   return apiClient.delete(`/api/customers/${id}`)
 }

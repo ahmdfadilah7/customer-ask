@@ -11,6 +11,9 @@ class CustomerPricingRuleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'service_category_id' => $this->service_category_id,
+            'region_scope_id' => $this->region_scope_id,
+            'airline_id' => $this->airline_id,
             'service_category' => $this->whenLoaded('serviceCategory', fn () => [
                 'code' => $this->serviceCategory->code,
                 'name' => $this->serviceCategory->name,

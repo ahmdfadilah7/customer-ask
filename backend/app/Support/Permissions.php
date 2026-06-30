@@ -136,6 +136,7 @@ final class Permissions
             Roles::MARKETING => [
                 'dashboard-view',
                 'corporate-view',
+                'corporate-create',
                 'corporate-update',
                 'pegawai-view',
                 'pegawai-create',

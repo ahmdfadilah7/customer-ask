@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Archive, ArchiveRestore, Building2, Eye, Trash2 } from '@lucide/vue'
+import { Archive, ArchiveRestore, Building2, Eye, Pencil, Plus, Trash2 } from '@lucide/vue'
 import {
   bulkDeleteCustomers,
   bulkForceDeleteCustomers,
@@ -48,8 +48,11 @@ const branchFilter = ref('')
 const selectedRows = ref([])
 const viewMode = ref(route.query.view === 'trashed' ? 'trashed' : 'active')
 const initializing = ref(false)
+const dataTableRef = ref(null)
 
 const canManage = computed(() => auth.canManage('corporate'))
+const canCreate = computed(() => auth.hasPermission('corporate-create'))
+const canUpdate = computed(() => auth.hasPermission('corporate-update'))
 const canImportCorporate = computed(() => auth.canImport('corporate'))
 const isTrashedView = computed(() => viewMode.value === 'trashed')
 
@@ -57,11 +60,16 @@ const branchOptions = computed(() => resolveBranchOptions(branches.value))
 const showBranchFilter = computed(() => shouldShowBranchSelector(branchOptions.value))
 const lockedBranchLabel = computed(() => findBranchLabel(branchOptions.value, branchFilter.value))
 
-watch(viewMode, async (mode) => {
-  selectedRows.value = []
-  router.replace({ query: mode === 'trashed' ? { view: 'trashed' } : {} })
+watch(viewMode, async () => {
+  clearTableSelection()
+  router.replace({ query: viewMode.value === 'trashed' ? { view: 'trashed' } : {} })
   await refreshCustomers()
 })
+
+function clearTableSelection() {
+  selectedRows.value = []
+  nextTick(() => dataTableRef.value?.clearSelection())
+}
 
 onMounted(loadData)
 
@@ -109,11 +117,20 @@ async function reloadCustomers() {
 }
 
 async function onBranchChange() {
+  clearTableSelection()
   await refreshCustomers()
 }
 
 function openDetail(row) {
   router.push({ name: 'corporate-detail', params: { id: row.id } })
+}
+
+function openCreateCorporate() {
+  router.push({ name: 'corporate-create' })
+}
+
+function openEditCorporate(row) {
+  router.push({ name: 'corporate-edit', params: { id: row.id } })
 }
 
 function openPegawaiList(row) {
@@ -137,7 +154,7 @@ async function handleDelete(row) {
   try {
     await deleteCustomer(row.id)
     toast.success(`Corporate "${row.name}" berhasil dihapus.`)
-    selectedRows.value = selectedRows.value.filter((item) => item.id !== row.id)
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal menghapus corporate.'))
@@ -163,7 +180,7 @@ async function handleBulkDelete() {
     if (data.failed?.length) {
       toast.warning(`${data.failed.length} corporate gagal dihapus.`)
     }
-    selectedRows.value = []
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal menghapus corporate terpilih.'))
@@ -183,7 +200,7 @@ async function handleRestore(row) {
   try {
     const { data } = await restoreCustomer(row.id)
     toast.success(data.message)
-    selectedRows.value = selectedRows.value.filter((item) => item.id !== row.id)
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal memulihkan corporate.'))
@@ -208,7 +225,7 @@ async function handleBulkRestore() {
     if (data.failed?.length) {
       toast.warning(`${data.failed.length} corporate gagal dipulihkan.`)
     }
-    selectedRows.value = []
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal memulihkan corporate terpilih.'))
@@ -228,7 +245,7 @@ async function handleForceDelete(row) {
   try {
     const { data } = await forceDeleteCustomer(row.id)
     toast.success(data.message)
-    selectedRows.value = selectedRows.value.filter((item) => item.id !== row.id)
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal menghapus permanen corporate.'))
@@ -254,7 +271,7 @@ async function handleBulkForceDelete() {
     if (data.failed?.length) {
       toast.warning(`${data.failed.length} corporate gagal dihapus permanen.`)
     }
-    selectedRows.value = []
+    clearTableSelection()
     await reloadCustomers()
   } catch (err) {
     toast.error(getApiErrorMessage(err, 'Gagal menghapus permanen corporate terpilih.'))
@@ -287,6 +304,15 @@ function formatDate(value) {
         : TERMS.corporate.listDescription"
     >
       <template #actions>
+        <button
+          v-if="!isTrashedView && canCreate"
+          type="button"
+          class="btn-primary !py-2 text-sm"
+          @click="openCreateCorporate"
+        >
+          <Plus class="size-4" />
+          Tambah Corporate
+        </button>
         <router-link
           v-if="!isTrashedView && canImportCorporate"
           to="/import/corporate"
@@ -344,6 +370,7 @@ function formatDate(value) {
 
     <AppDataTable
       v-else
+      ref="dataTableRef"
       :data="customers"
       :loading="tableLoading"
       search-placeholder="Cari nama corporate..."
@@ -413,7 +440,7 @@ function formatDate(value) {
           </AppTableColumn>
         </template>
 
-        <AppTableColumn label="Aksi" :width="isTrashedView ? 100 : (canManage ? 120 : 80)" :sortable="false">
+        <AppTableColumn label="Aksi" :width="isTrashedView ? 100 : (canManage || canUpdate ? 150 : 80)" :sortable="false">
           <template #default="{ row }">
             <div class="flex justify-end gap-1">
               <template v-if="isTrashedView">
@@ -444,6 +471,15 @@ function formatDate(value) {
                   @click="openDetail(row)"
                 >
                   <Eye class="size-4" />
+                </button>
+                <button
+                  v-if="canUpdate"
+                  type="button"
+                  class="btn-icon-neutral"
+                  title="Edit corporate"
+                  @click="openEditCorporate(row)"
+                >
+                  <Pencil class="size-4" />
                 </button>
                 <button
                   v-if="canManage"

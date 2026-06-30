@@ -108,6 +108,18 @@ const router = createRouter({
           meta: { title: 'Corporate (Pelanggan)', permission: P.CORPORATE_VIEW },
         },
         {
+          path: 'corporate/create',
+          name: 'corporate-create',
+          component: () => import('@/views/corporate/CorporateFormView.vue'),
+          meta: { title: 'Tambah Corporate', permission: P.CORPORATE_VIEW },
+        },
+        {
+          path: 'corporate/:id/edit',
+          name: 'corporate-edit',
+          component: () => import('@/views/corporate/CorporateFormView.vue'),
+          meta: { title: 'Edit Corporate', permission: P.CORPORATE_VIEW },
+        },
+        {
           path: 'corporate/:id',
           name: 'corporate-detail',
           component: () => import('@/views/corporate/CorporateDetailView.vue'),
