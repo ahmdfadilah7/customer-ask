@@ -205,8 +205,8 @@ function roleLabel(name) {
       </AppTableColumn>
     </AppDataTable>
 
-    <AppModal v-model="showModal" :title="editingUser ? 'Edit User' : 'Tambah User'">
-        <form class="space-y-4" @submit.prevent="handleSubmit">
+    <AppModal v-model="showModal" :title="editingUser ? 'Edit User' : 'Tambah User'" max-width="max-w-lg">
+        <form id="user-form" class="space-y-4" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label">Nama</label>
             <input v-model="form.name" type="text" required class="input-field" />
@@ -242,13 +242,16 @@ function roleLabel(name) {
             <input v-model="form.is_active" type="checkbox" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
             Akun aktif
           </label>
-          <div class="flex justify-end gap-2 pt-2">
+        </form>
+
+        <template #footer>
+          <div class="flex justify-end gap-2">
             <button type="button" class="btn-secondary" @click="closeModal">Batal</button>
-            <button type="submit" class="btn-primary" :disabled="saving">
+            <button type="submit" form="user-form" class="btn-primary" :disabled="saving">
               {{ saving ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
-        </form>
+        </template>
     </AppModal>
   </div>
 </template>

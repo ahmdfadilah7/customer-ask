@@ -89,6 +89,7 @@ function handleSubmit() {
   <AppModal
     :model-value="modelValue"
     :title="isEditing ? 'Edit Role' : 'Tambah Role'"
+    max-width="max-w-2xl"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form class="space-y-5" @submit.prevent="handleSubmit">
@@ -130,7 +131,7 @@ function handleSubmit() {
           Permission belum dimuat. Tutup modal lalu muat ulang halaman, atau jalankan
           <code class="text-xs">php artisan db:seed --class=PermissionSeeder</code>.
         </div>
-        <div v-else class="max-h-[min(50vh,420px)] space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+        <div v-else class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
           <div
             v-for="group in groups"
             :key="group.key"
@@ -168,13 +169,15 @@ function handleSubmit() {
           </div>
         </div>
       </div>
+    </form>
 
-      <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <template #footer>
+      <div class="flex justify-end gap-2">
         <button type="button" class="btn-secondary" @click="close">Batal</button>
-        <button type="submit" class="btn-primary" :disabled="saving || form.permissions.length === 0">
+        <button type="button" class="btn-primary" :disabled="saving || form.permissions.length === 0" @click="handleSubmit">
           {{ saving ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Buat Role' }}
         </button>
       </div>
-    </form>
+    </template>
   </AppModal>
 </template>

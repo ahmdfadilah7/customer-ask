@@ -43,26 +43,31 @@ onUnmounted(unlockBodyScroll)
       leave-to-class="opacity-0"
     >
       <div v-if="open" class="modal-overlay" @click.self="close">
-        <Transition
-          enter-active-class="transition duration-200 ease-out"
-          enter-from-class="opacity-0 scale-95"
-          enter-to-class="opacity-100 scale-100"
-          leave-active-class="transition duration-150 ease-in"
-          leave-from-class="opacity-100 scale-100"
-          leave-to-class="opacity-0 scale-95"
-        >
-          <div v-if="open" class="modal-panel" :class="maxWidth" role="dialog" aria-modal="true">
-            <div class="modal-header">
-              <h3 class="modal-title">{{ title }}</h3>
-              <button type="button" class="btn-icon-neutral" @click="close">
-                <X class="size-5" />
-              </button>
+        <div class="modal-overlay__align">
+          <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div v-if="open" class="modal-panel" :class="maxWidth" role="dialog" aria-modal="true">
+              <div class="modal-header">
+                <h3 class="modal-title">{{ title }}</h3>
+                <button type="button" class="btn-icon-neutral" @click="close">
+                  <X class="size-5" />
+                </button>
+              </div>
+              <div class="modal-body">
+                <slot />
+              </div>
+              <div v-if="$slots.footer" class="modal-footer">
+                <slot name="footer" />
+              </div>
             </div>
-            <div class="modal-body">
-              <slot />
-            </div>
-          </div>
-        </Transition>
+          </Transition>
+        </div>
       </div>
     </Transition>
   </Teleport>

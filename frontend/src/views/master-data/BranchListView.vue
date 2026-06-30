@@ -147,7 +147,7 @@ async function handleDelete(branch) {
     </AppDataTable>
 
     <AppModal v-model="showModal" :title="editingBranch ? 'Edit Cabang' : 'Tambah Cabang'" max-width="max-w-md">
-        <form class="space-y-4" @submit.prevent="handleSubmit">
+        <form id="branch-form" class="space-y-4" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label">Kode</label>
             <input v-model="form.code" type="text" required maxlength="20" class="input-field uppercase" />
@@ -163,13 +163,16 @@ async function handleDelete(branch) {
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <div class="flex justify-end gap-2 pt-2">
+        </form>
+
+        <template #footer>
+          <div class="flex justify-end gap-2">
             <button type="button" class="btn-secondary" @click="closeModal">Batal</button>
-            <button type="submit" class="btn-primary" :disabled="saving">
+            <button type="submit" form="branch-form" class="btn-primary" :disabled="saving">
               {{ saving ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
-        </form>
+        </template>
     </AppModal>
   </div>
 </template>

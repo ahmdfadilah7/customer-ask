@@ -72,7 +72,7 @@ function handleSubmit() {
 
 <template>
   <AppModal v-model="open" :title="modalTitle" max-width="max-w-2xl">
-    <form class="space-y-4" @submit.prevent="handleSubmit">
+    <form id="employee-form" class="space-y-4" @submit.prevent="handleSubmit">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
           <label class="form-label">{{ TERMS.corporate.label }} (Pelanggan) *</label>
@@ -154,13 +154,15 @@ function handleSubmit() {
           </select>
         </div>
       </div>
+    </form>
 
-      <div class="flex justify-end gap-2 pt-2">
+    <template #footer>
+      <div class="flex justify-end gap-2">
         <button type="button" class="btn-secondary" @click="open = false">Batal</button>
-        <button type="submit" class="btn-primary" :disabled="saving">
+        <button type="submit" form="employee-form" class="btn-primary" :disabled="saving">
           {{ saving ? 'Menyimpan...' : 'Simpan' }}
         </button>
       </div>
-    </form>
+    </template>
   </AppModal>
 </template>

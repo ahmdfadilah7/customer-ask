@@ -135,18 +135,20 @@ async function handleDelete(item) {
       </AppTableColumn>
     </AppDataTable>
 
-    <div v-if="showModal" class="modal-overlay">
-      <div class="modal-panel max-w-md">
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ editingItem ? 'Edit Nationality' : 'Tambah Nationality' }}
-          </h3>
-          <button type="button" class="btn-icon-neutral" @click="closeModal">
-            <X class="size-5" />
-          </button>
-        </div>
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-overlay__align">
+        <div class="modal-panel max-w-md">
+          <div class="modal-header">
+            <h3 class="modal-title">
+              {{ editingItem ? 'Edit Nationality' : 'Tambah Nationality' }}
+            </h3>
+            <button type="button" class="btn-icon-neutral" @click="closeModal">
+              <X class="size-5" />
+            </button>
+          </div>
 
-        <form class="space-y-4" @submit.prevent="handleSubmit">
+          <div class="modal-body">
+            <form class="space-y-4" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label">Kode</label>
             <input v-model="form.code" type="text" required maxlength="10" class="input-field uppercase" placeholder="ID, ES, US" />
@@ -161,7 +163,9 @@ async function handleDelete(item) {
               {{ saving ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
-        </form>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </div>

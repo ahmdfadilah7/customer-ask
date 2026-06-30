@@ -195,7 +195,7 @@ async function handleDelete(item) {
     </div>
 
     <AppModal v-model="showModal" :title="editingItem ? 'Edit Template' : 'Tambah Template'" max-width="max-w-2xl">
-      <form class="space-y-4" @submit.prevent="handleSubmit">
+      <form id="message-template-form" class="space-y-4" @submit.prevent="handleSubmit">
         <div>
           <label class="form-label">Nama Template</label>
           <input v-model="form.name" type="text" required maxlength="255" class="input-field" placeholder="Reminder Passport" />
@@ -233,13 +233,16 @@ async function handleDelete(item) {
           <input v-model="form.is_active" type="checkbox" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
           Template aktif (bisa dipilih saat kirim pesan)
         </label>
-        <div class="flex justify-end gap-2 pt-2">
+      </form>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
           <button type="button" class="btn-secondary" @click="closeModal">Batal</button>
-          <button type="submit" class="btn-primary" :disabled="saving">
+          <button type="submit" form="message-template-form" class="btn-primary" :disabled="saving">
             {{ saving ? 'Menyimpan...' : 'Simpan' }}
           </button>
         </div>
-      </form>
+      </template>
     </AppModal>
   </div>
 </template>
