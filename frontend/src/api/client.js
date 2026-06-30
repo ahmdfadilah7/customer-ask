@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// Dev: kosong agar Vite proxy ke backend lokal. Production: kosong = same origin (satu domain).
+const baseURL = import.meta.env.DEV
+  ? ''
+  : (import.meta.env.VITE_API_URL ?? '')
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:8000'),
+  baseURL,
   withCredentials: true,
   withXSRFToken: true,
   headers: {

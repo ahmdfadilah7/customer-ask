@@ -19,7 +19,7 @@ onMounted(() => {
   }
 })
 
-const form = ref({ email: 'admin@customer.local', password: 'password' })
+const form = ref({ email: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 
@@ -100,7 +100,7 @@ async function handleLogin() {
             <p class="mt-1 text-sm text-slate-500">Silakan login untuk melanjutkan</p>
           </div>
 
-          <form class="space-y-5" @submit.prevent="handleLogin">
+          <form class="space-y-5" autocomplete="off" @submit.prevent="handleLogin">
             <div>
               <label class="form-label">Email</label>
               <div class="relative">
@@ -108,9 +108,11 @@ async function handleLogin() {
                 <input
                   v-model="form.email"
                   type="email"
+                  name="login-email"
                   required
+                  autocomplete="off"
                   class="input-field !pl-10"
-                  placeholder="admin@customer.local"
+                  placeholder="nama@perusahaan.com"
                 />
               </div>
             </div>
@@ -122,7 +124,9 @@ async function handleLogin() {
                 <input
                   v-model="form.password"
                   type="password"
+                  name="login-password"
                   required
+                  autocomplete="new-password"
                   class="input-field !pl-10"
                   placeholder="••••••••"
                 />
